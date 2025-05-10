@@ -509,7 +509,6 @@ export default function MainFeature() {
               )}
             </Droppable>
           </DragDropContext>
-          ))}
           
           {/* Add another list button (mobile only) */}
           <div className="md:hidden w-40 shrink-0 flex items-start">
