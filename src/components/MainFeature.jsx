@@ -229,9 +229,9 @@ export default function MainFeature() {
         // Find destination list
         if (destListIndex === -1) return;
         if (!newLists[destListIndex] || !newLists[destListIndex].cards) return;
-        const destListIndex = lists.findIndex(list => list.id === destination.droppableId);
-        const card = source.index < newLists[sourceListIndex].cards.length
           ? newLists[sourceListIndex].cards[source.index]
+        if (destListIndex === -1) return;
+        if (!newLists[destListIndex] || !newLists[destListIndex].cards) return;
           : null;
         
         if (!card) return;
@@ -243,6 +243,7 @@ export default function MainFeature() {
           newLists[destListIndex].cards.splice(destination.index, 0, card);
         
         setLists(newLists);
+        }
       }
     }
   };
