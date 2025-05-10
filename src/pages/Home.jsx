@@ -13,6 +13,13 @@ export default function Home() {
   const PlusIcon = getIcon('Plus');
   const BoardIcon = getIcon('LayoutGrid');
   const LoaderIcon = getIcon('Loader2');
+  const CodeIcon = getIcon('Code');
+  const BriefcaseIcon = getIcon('Briefcase');
+  const BrainIcon = getIcon('Brain');
+  const CheckSquareIcon = getIcon('CheckSquare');
+  const TargetIcon = getIcon('Target');
+  const RocketIcon = getIcon('Rocket');
+  const HeartIcon = getIcon('Heart');
   const XIcon = getIcon('X');
   
   // Sample mock data - in a real app this would come from an API
@@ -32,7 +39,7 @@ export default function Home() {
   }, []);
 
   // Handle board creation
-  const handleCreateBoard = (title, color) => {
+  const handleCreateBoard = (title, iconName) => {
     if (!title.trim()) {
       toast.error("Board title cannot be empty");
       return;
@@ -41,7 +48,7 @@ export default function Home() {
     const newBoard = {
       id: `board-${Date.now()}`,
       title,
-      color: color || '#3b82f6',
+      iconName: iconName || 'LayoutGrid',
       cards: 0,
       lastUpdated: new Date()
     };
@@ -55,16 +62,16 @@ export default function Home() {
   // Create board modal
   const CreateBoardModal = () => {
     const [boardTitle, setBoardTitle] = useState('');
-    const [boardColor, setBoardColor] = useState('#3b82f6');
+    const [boardIcon, setBoardIcon] = useState('LayoutGrid');
     
-    const colorOptions = [
-      '#3b82f6', // blue
-      '#10b981', // green
-      '#8b5cf6', // purple
-      '#ef4444', // red
-      '#f59e0b', // amber
-      '#ec4899', // pink
-      '#64748b', // slate
+    const iconOptions = [
+      { name: 'LayoutGrid', color: 'text-blue-500' },
+      { name: 'Code', color: 'text-green-500' },
+      { name: 'Briefcase', color: 'text-purple-500' },
+      { name: 'Brain', color: 'text-red-500' },
+      { name: 'CheckSquare', color: 'text-amber-500' },
+      { name: 'Rocket', color: 'text-pink-500' },
+      { name: 'Heart', color: 'text-slate-500' },
     ];
     
     return (
@@ -108,15 +115,21 @@ export default function Home() {
               </div>
               
               <div className="mb-6">
-                <label className="label">Board Color</label>
+                <label className="label">Board Icon</label>
                 <div className="flex flex-wrap gap-2">
-                  {colorOptions.map(color => (
+                  {iconOptions.map(icon => {
+                    const IconComponent = getIcon(icon.name);
+                    return (
                     <button
-                      key={color}
-                      onClick={() => setBoardColor(color)}
-                      className={`w-8 h-8 rounded-full transition-transform ${boardColor === color ? 'ring-2 ring-offset-2 ring-surface-900 dark:ring-surface-100 scale-110' : 'hover:scale-110'}`}
-                      style={{ backgroundColor: color }}
-                      aria-label={`Select color ${color}`}
+                      key={icon.name}
+                      onClick={() => setBoardIcon(icon.name)}
+                      className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform ${icon.color} 
+                        ${boardIcon === icon.name 
+                          ? 'ring-2 ring-offset-2 ring-surface-900 dark:ring-surface-100 scale-110 bg-surface-100 dark:bg-surface-700' 
+                          : 'hover:scale-110 bg-surface-50 dark:bg-surface-800'
+                        }`}
+                      aria-label={`Select icon ${icon.name}`}
+                      title={icon.name}
                     />
                   ))}
                 </div>
@@ -130,7 +143,7 @@ export default function Home() {
                   Cancel
                 </button>
                 <button 
-                  onClick={() => handleCreateBoard(boardTitle, boardColor)}
+                  onClick={() => handleCreateBoard(boardTitle, boardIcon)}
                   disabled={!boardTitle.trim()}
                   className="btn-primary"
                 >
@@ -211,10 +224,18 @@ export default function Home() {
                     position: "bottom-center"
                   })}
                 >
+                  whileTap={{ scale: 0.98 }}
                   <div 
-                    className="h-2 w-full"
-                    style={{ backgroundColor: board.color }}
-                  ></div>
+                  <div className="p-3 border-b border-surface-200 dark:border-surface-700 flex items-center gap-2">
+                    {(() => {
+                      const BoardIconComponent = getIcon(board.iconName || 'LayoutGrid');
+                      return (
+                        <BoardIconComponent 
+                          size={20} 
+                          className={board.iconName === 'LayoutGrid' ? 'text-blue-500' : ''} 
+                        />
+                      );
+                    })()}
                   <div className="p-4">
                     <h3 className="font-medium text-lg mb-2">{board.title}</h3>
                     <div className="flex justify-between text-sm text-surface-500 dark:text-surface-400">
