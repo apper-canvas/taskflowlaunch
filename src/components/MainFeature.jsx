@@ -220,15 +220,15 @@ export default function MainFeature() {
         setLists(newLists);
       } else {
         
-        // Validate that lists were found
-        if (sourceListIndex === -1 || destListIndex === -1) {
-          return;
-        }
-        
         // Moving between lists
-        if (!newLists[sourceListIndex] || !newLists[sourceListIndex].cards) return;
-        if (!newLists[destListIndex] || !newLists[destListIndex].cards) return;
+        const newLists = [...lists];
         const sourceListIndex = lists.findIndex(list => list.id === source.droppableId);
+        if (sourceListIndex === -1) return;
+        if (!newLists[sourceListIndex] || !newLists[sourceListIndex].cards) return;
+        
+        // Find destination list
+        if (destListIndex === -1) return;
+        if (!newLists[destListIndex] || !newLists[destListIndex].cards) return;
         const destListIndex = lists.findIndex(list => list.id === destination.droppableId);
         const card = source.index < newLists[sourceListIndex].cards.length
           ? newLists[sourceListIndex].cards[source.index]
@@ -241,8 +241,6 @@ export default function MainFeature() {
           newLists[sourceListIndex].cards.splice(source.index, 1);
           // Add card to destination list at the correct index
           newLists[destListIndex].cards.splice(destination.index, 0, card);
-        }
-        // Add card to destination list at the correct index
         newLists[destListIndex].cards.splice(destination.index, 0, card);
         
         setLists(newLists);
