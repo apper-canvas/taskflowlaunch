@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import getIcon from '../utils/iconUtils';
 
 export default function MainFeature() {
@@ -40,11 +41,6 @@ export default function MainFeature() {
     }
   ]);
 
-  // State for dragging
-  const [draggedCard, setDraggedCard] = useState(null);
-  const [draggedList, setDraggedList] = useState(null);
-  const [dragOverListId, setDragOverListId] = useState(null);
-  
   // State for editing
   const [editingListId, setEditingListId] = useState(null);
   const [editingCardId, setEditingCardId] = useState(null);
@@ -180,65 +176,55 @@ export default function MainFeature() {
     toast.success('List deleted');
   };
   
-  // Handle drag and drop
-  const handleDragStart = (e, cardId, listId) => {
-    setDraggedCard({ cardId, listId });
-  };
-  
-  const handleListDragStart = (e, listId) => {
-    setDraggedList(listId);
-  };
-  
-  const handleDragOver = (e, listId) => {
-    e.preventDefault();
-    setDragOverListId(listId);
-  };
-  
-  const handleDrop = (e, targetListId) => {
-    e.preventDefault();
+  // Handle drag and drop with react-beautiful-dnd
+  const onDragEnd = (result) => {
+    const { destination, source, draggableId, type } = result;
     
-    if (draggedList !== null) {
-      // Reorder lists
-      const draggedListIndex = lists.findIndex(list => list.id === draggedList);
-      const targetListIndex = lists.findIndex(list => list.id === targetListId);
-      
-      if (draggedListIndex !== targetListIndex) {
-        const newLists = [...lists];
-        const [removed] = newLists.splice(draggedListIndex, 1);
-        newLists.splice(targetListIndex, 0, removed);
-        setLists(newLists);
-      }
-    } else if (draggedCard !== null) {
-      // Move card between lists
-      const { cardId, listId: sourceListId } = draggedCard;
-      
-      if (sourceListId !== targetListId) {
-        const sourceList = lists.find(list => list.id === sourceListId);
-        const card = sourceList.cards.find(card => card.id === cardId);
-        
-        setLists(lists.map(list => {
-          if (list.id === sourceListId) {
-            return {
-              ...list,
-              cards: list.cards.filter(card => card.id !== cardId)
-            };
-          }
-          if (list.id === targetListId) {
-            return {
-              ...list,
-              cards: [...list.cards, card]
-            };
-          }
-          return list;
-        }));
-        
-        toast.info(`Card moved to ${lists.find(list => list.id === targetListId).title}`);
-      }
+    // If there's no destination or if item was dropped in its original position
+    if (!destination || 
+        (destination.droppableId === source.droppableId && 
+         destination.index === source.index)) {
+      return;
     }
     
-    setDraggedCard(null);
-    setDraggedList(null);
-    setDragOverListId(null);
+    // Handle list reordering
+    if (type === 'list') {
+      const newLists = [...lists];
+      const [removed] = newLists.splice(source.index, 1);
+      newLists.splice(destination.index, 0, removed);
+      setLists(newLists);
+      return;
+    }
+    
+    // Handle card movement
+    if (type === 'card') {
+      // If moving within the same list
+      if (source.droppableId === destination.droppableId) {
+        const listIndex = lists.findIndex(list => list.id === source.droppableId);
+        const newLists = [...lists];
+        const cards = [...newLists[listIndex].cards];
+        const [removed] = cards.splice(source.index, 1);
+        cards.splice(destination.index, 0, removed);
+        newLists[listIndex].cards = cards;
+        setLists(newLists);
+      } else {
+        // Moving between lists
+        const sourceListIndex = lists.findIndex(list => list.id === source.droppableId);
+        const destListIndex = lists.findIndex(list => list.id === destination.droppableId);
+        const newLists = [...lists];
+        
+        // Get the card being moved
+        const card = newLists[sourceListIndex].cards[source.index];
+        
+        // Remove card from source list
+        newLists[sourceListIndex].cards.splice(source.index, 1);
+        // Add card to destination list at the correct index
+        newLists[destListIndex].cards.splice(destination.index, 0, card);
+        
+        setLists(newLists);
+        toast.info(`Card moved to ${newLists[destListIndex].title}`);
+      }
+    }
   };
   
   // Handle toggle label
@@ -273,225 +259,256 @@ export default function MainFeature() {
       </div>
       
       <div className="overflow-x-auto pb-4 scrollbar-thin">
-        <div className="flex gap-4 min-w-max">
-          {lists.map(list => (
-            <div 
-              key={list.id}
-              className={`w-80 shrink-0 rounded-xl ${dragOverListId === list.id ? 'bg-surface-200 dark:bg-surface-700' : 'bg-surface-100 dark:bg-surface-800'} transition-colors`}
-              onDragOver={(e) => handleDragOver(e, list.id)}
-              onDrop={(e) => handleDrop(e, list.id)}
-              draggable
-              onDragStart={(e) => handleListDragStart(e, list.id)}
-            >
-              <div className="p-3 flex justify-between items-center border-b border-surface-200 dark:border-surface-700">
-                {editingListId === list.id ? (
-                  <form 
-                    ref={listFormRef}
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      saveListTitle(list.id);
-                    }}
-                    className="flex-1"
-                  >
-                    <input
-                      type="text"
-                      value={newListTitle}
-                      onChange={(e) => setNewListTitle(e.target.value)}
-                      className="input w-full py-1 px-2 text-base font-medium"
-                      autoFocus
-                    />
-                  </form>
-                ) : (
-                  <h3 
-                    className="font-medium cursor-pointer hover:text-primary transition-colors px-1"
-                    onClick={() => startEditingList(list.id, list.title)}
-                  >
-                    {list.title} <span className="text-surface-500 dark:text-surface-400 text-sm font-normal">({list.cards.length})</span>
-                  </h3>
-                )}
-                
-                <div className="flex gap-1">
-                  <button 
-                    onClick={() => openCardForm(list.id)}
-                    className="p-1 rounded hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-600 dark:text-surface-300 transition-colors"
-                    title="Add card"
-                  >
-                    <PlusIcon size={16} />
-                  </button>
-                  <button 
-                    onClick={() => deleteList(list.id)}
-                    className="p-1 rounded hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-600 dark:text-surface-300 transition-colors"
-                    title="Delete list"
-                  >
-                    <TrashIcon size={16} />
-                  </button>
-                </div>
-              </div>
-              
-              <div className="p-2 max-h-[calc(100vh-250px)] overflow-y-auto scrollbar-thin">
-                <AnimatePresence>
-                  {list.cards.map(card => (
-                    <motion.div
-                      key={card.id}
-                      layout
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.9 }}
-                      className={`bg-white dark:bg-surface-900 p-3 rounded-lg shadow-sm mb-2 
-                        ${draggedCard?.cardId === card.id ? 'opacity-50' : 'opacity-100'}
-                        border border-surface-200 dark:border-surface-700 hover:shadow-md transition-all`}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, card.id, list.id)}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-medium text-sm">{card.title}</h4>
-                        <div className="flex gap-1">
-                          <button 
-                            onClick={() => openCardForm(list.id, card)}
-                            className="p-1 rounded hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 dark:text-surface-400 transition-colors"
-                            title="Edit card"
+          <DragDropContext onDragEnd={onDragEnd}>
+            <Droppable droppableId="all-lists" direction="horizontal" type="list">
+              {(provided) => (
+                <div 
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
+                  className="flex gap-4"
+                >
+                  {lists.map((list, listIndex) => (
+                    <Draggable key={list.id} draggableId={list.id} index={listIndex}>
+                      {(provided, snapshot) => (
+                        <div 
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          className={`w-80 shrink-0 rounded-xl ${snapshot.isDragging ? 'bg-surface-200 dark:bg-surface-700' : 'bg-surface-100 dark:bg-surface-800'} transition-colors`}
+                        >
+                          <div 
+                            className="p-3 flex justify-between items-center border-b border-surface-200 dark:border-surface-700"
+                            {...provided.dragHandleProps}
                           >
-                            <EditIcon size={14} />
-                          </button>
-                          <button 
-                            onClick={() => deleteCard(list.id, card.id)}
-                            className="p-1 rounded hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 dark:text-surface-400 transition-colors"
-                            title="Delete card"
-                          >
-                            <TrashIcon size={14} />
-                          </button>
+                            {editingListId === list.id ? (
+                              <form 
+                                ref={listFormRef}
+                                onSubmit={(e) => {
+                                  e.preventDefault();
+                                  saveListTitle(list.id);
+                                }}
+                                className="flex-1"
+                              >
+                                <input
+                                  type="text"
+                                  value={newListTitle}
+                                  onChange={(e) => setNewListTitle(e.target.value)}
+                                  className="input w-full py-1 px-2 text-base font-medium"
+                                  autoFocus
+                                />
+                              </form>
+                            ) : (
+                              <h3 
+                                className="font-medium cursor-pointer hover:text-primary transition-colors px-1"
+                                onClick={() => startEditingList(list.id, list.title)}
+                              >
+                                {list.title} <span className="text-surface-500 dark:text-surface-400 text-sm font-normal">({list.cards.length})</span>
+                              </h3>
+                            )}
+                            
+                            <div className="flex gap-1">
+                              <button 
+                                onClick={() => openCardForm(list.id)}
+                                className="p-1 rounded hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-600 dark:text-surface-300 transition-colors"
+                                title="Add card"
+                              >
+                                <PlusIcon size={16} />
+                              </button>
+                              <button 
+                                onClick={() => deleteList(list.id)}
+                                className="p-1 rounded hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-600 dark:text-surface-300 transition-colors"
+                                title="Delete list"
+                              >
+                                <TrashIcon size={16} />
+                              </button>
+                            </div>
+                          </div>
+                          
+                          <Droppable droppableId={list.id} type="card">
+                            {(provided, snapshot) => (
+                              <div 
+                                ref={provided.innerRef}
+                                {...provided.droppableProps}
+                                className={`p-2 max-h-[calc(100vh-250px)] overflow-y-auto scrollbar-thin ${snapshot.isDraggingOver ? 'bg-surface-200 dark:bg-surface-700' : ''}`}
+                              >
+                                <AnimatePresence>
+                                  {list.cards.map((card, index) => (
+                                    <Draggable key={card.id} draggableId={card.id} index={index}>
+                                      {(provided, snapshot) => (
+                                        <motion.div
+                                          ref={provided.innerRef}
+                                          {...provided.draggableProps}
+                                          {...provided.dragHandleProps}
+                                          layout
+                                          initial={{ opacity: 0, y: 10 }}
+                                          animate={{ opacity: 1, y: 0 }}
+                                          exit={{ opacity: 0, scale: 0.9 }}
+                                          className={`bg-white dark:bg-surface-900 p-3 rounded-lg shadow-sm mb-2 
+                                            ${snapshot.isDragging ? 'opacity-50' : 'opacity-100'}
+                                            border border-surface-200 dark:border-surface-700 hover:shadow-md transition-all`}
+                                          style={provided.draggableProps.style}
+                                        >
+                                          <div className="flex justify-between items-start mb-2">
+                                            <h4 className="font-medium text-sm">{card.title}</h4>
+                                            <div className="flex gap-1">
+                                              <button 
+                                                onClick={() => openCardForm(list.id, card)}
+                                                className="p-1 rounded hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 dark:text-surface-400 transition-colors"
+                                                title="Edit card"
+                                              >
+                                                <EditIcon size={14} />
+                                              </button>
+                                              <button 
+                                                onClick={() => deleteCard(list.id, card.id)}
+                                                className="p-1 rounded hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 dark:text-surface-400 transition-colors"
+                                                title="Delete card"
+                                              >
+                                                <TrashIcon size={14} />
+                                              </button>
+                                            </div>
+                                          </div>
+                                          
+                                          {card.description && (
+                                            <p className="text-xs text-surface-600 dark:text-surface-400 mb-2">
+                                              {card.description}
+                                            </p>
+                                          )}
+                                          
+                                          <div className="flex flex-wrap gap-1 mb-2">
+                                            {card.labels && card.labels.map(label => (
+                                              <span 
+                                                key={label} 
+                                                className={`${labelColors[label] || 'bg-gray-500'} text-white text-xs px-2 py-0.5 rounded-full`}
+                                              >
+                                                {label}
+                                              </span>
+                                            ))}
+                                          </div>
+                                          
+                                          {card.due && (
+                                            <div className="flex items-center text-xs text-surface-500 dark:text-surface-400">
+                                              <ClockIcon size={12} className="mr-1" />
+                                              <span>{new Date(card.due).toLocaleDateString()}</span>
+                                            </div>
+                                          )}
+                                        </motion.div>
+                                      )}
+                                    </Draggable>
+                                  ))}
+                                </AnimatePresence>
+                                {provided.placeholder}
+                                
+                                {/* New Card Form */}
+                                <AnimatePresence>
+                                  {showCardForm === list.id && (
+                                    <motion.div
+                                      initial={{ opacity: 0, y: 10 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      exit={{ opacity: 0, y: 10 }}
+                                      className="bg-white dark:bg-surface-900 p-3 rounded-lg shadow-md border border-surface-200 dark:border-surface-700"
+                                      ref={cardFormRef}
+                                    >
+                                      <div className="mb-3">
+                                        <input
+                                          type="text"
+                                          value={newCardData.title}
+                                          onChange={(e) => setNewCardData({...newCardData, title: e.target.value})}
+                                          placeholder="Card title"
+                                          className="input w-full py-1.5 text-sm"
+                                          autoFocus
+                                        />
+                                      </div>
+                                      
+                                      <div className="mb-3">
+                                        <textarea
+                                          value={newCardData.description}
+                                          onChange={(e) => setNewCardData({...newCardData, description: e.target.value})}
+                                          placeholder="Description (optional)"
+                                          className="input w-full py-1.5 text-sm min-h-[60px]"
+                                          rows={2}
+                                        />
+                                      </div>
+                                      
+                                      <div className="mb-3">
+                                        <label className="label text-xs flex items-center mb-1">
+                                          <TagIcon size={12} className="mr-1" />
+                                          Labels
+                                        </label>
+                                        <div className="flex flex-wrap gap-1">
+                                          {Object.keys(labelColors).map(label => (
+                                            <button
+                                              key={label}
+                                              type="button"
+                                              onClick={() => toggleLabel(label)}
+                                              className={`
+                                                text-xs px-2 py-0.5 rounded-full transition-all
+                                                ${newCardData.labels.includes(label) 
+                                                  ? `${labelColors[label]} text-white` 
+                                                  : 'bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-300'}
+                                              `}
+                                            >
+                                              {label}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      </div>
+                                      
+                                      <div className="mb-4">
+                                        <label className="label text-xs flex items-center mb-1">
+                                          <ClockIcon size={12} className="mr-1" />
+                                          Due Date (optional)
+                                        </label>
+                                        <input
+                                          type="date"
+                                          value={newCardData.due || ''}
+                                          onChange={(e) => setNewCardData({...newCardData, due: e.target.value})}
+                                          className="input w-full py-1.5 text-sm"
+                                        />
+                                      </div>
+                                      
+                                      <div className="flex justify-end gap-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setShowCardForm(null);
+                                            setNewCardData({ title: '', description: '', labels: [], due: '' });
+                                          }}
+                                          className="btn-outline py-1 px-3 text-sm"
+                                        >
+                                          Cancel
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => saveCard(list.id)}
+                                          className="btn-primary py-1 px-3 text-sm"
+                                        >
+                                          {editingCardId ? 'Update' : 'Add'} Card
+                                        </button>
+                                      </div>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                                
+                                {!showCardForm && list.cards.length === 0 && (
+                                  <button
+                                    onClick={() => openCardForm(list.id)}
+                                    className="w-full py-2 px-3 text-sm text-center rounded-lg text-surface-500 dark:text-surface-400 hover:bg-white dark:hover:bg-surface-900 border border-dashed border-surface-300 dark:border-surface-700 transition-colors"
+                                  >
+                                    <PlusIcon size={16} className="inline mr-1" />
+                                    Add a card
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </Droppable>
                         </div>
-                      </div>
-                      
-                      {card.description && (
-                        <p className="text-xs text-surface-600 dark:text-surface-400 mb-2">
-                          {card.description}
-                        </p>
                       )}
-                      
-                      <div className="flex flex-wrap gap-1 mb-2">
-                        {card.labels && card.labels.map(label => (
-                          <span 
-                            key={label} 
-                            className={`${labelColors[label] || 'bg-gray-500'} text-white text-xs px-2 py-0.5 rounded-full`}
-                          >
-                            {label}
-                          </span>
-                        ))}
-                      </div>
-                      
-                      {card.due && (
-                        <div className="flex items-center text-xs text-surface-500 dark:text-surface-400">
-                          <ClockIcon size={12} className="mr-1" />
-                          <span>{new Date(card.due).toLocaleDateString()}</span>
-                        </div>
-                      )}
-                    </motion.div>
+                    </Draggable>
                   ))}
-                </AnimatePresence>
-                
-                {/* New Card Form */}
-                <AnimatePresence>
-                  {showCardForm === list.id && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className="bg-white dark:bg-surface-900 p-3 rounded-lg shadow-md border border-surface-200 dark:border-surface-700"
-                      ref={cardFormRef}
-                    >
-                      <div className="mb-3">
-                        <input
-                          type="text"
-                          value={newCardData.title}
-                          onChange={(e) => setNewCardData({...newCardData, title: e.target.value})}
-                          placeholder="Card title"
-                          className="input w-full py-1.5 text-sm"
-                          autoFocus
-                        />
-                      </div>
-                      
-                      <div className="mb-3">
-                        <textarea
-                          value={newCardData.description}
-                          onChange={(e) => setNewCardData({...newCardData, description: e.target.value})}
-                          placeholder="Description (optional)"
-                          className="input w-full py-1.5 text-sm min-h-[60px]"
-                          rows={2}
-                        />
-                      </div>
-                      
-                      <div className="mb-3">
-                        <label className="label text-xs flex items-center mb-1">
-                          <TagIcon size={12} className="mr-1" />
-                          Labels
-                        </label>
-                        <div className="flex flex-wrap gap-1">
-                          {Object.keys(labelColors).map(label => (
-                            <button
-                              key={label}
-                              type="button"
-                              onClick={() => toggleLabel(label)}
-                              className={`
-                                text-xs px-2 py-0.5 rounded-full transition-all
-                                ${newCardData.labels.includes(label) 
-                                  ? `${labelColors[label]} text-white` 
-                                  : 'bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-300'}
-                              `}
-                            >
-                              {label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      <div className="mb-4">
-                        <label className="label text-xs flex items-center mb-1">
-                          <ClockIcon size={12} className="mr-1" />
-                          Due Date (optional)
-                        </label>
-                        <input
-                          type="date"
-                          value={newCardData.due || ''}
-                          onChange={(e) => setNewCardData({...newCardData, due: e.target.value})}
-                          className="input w-full py-1.5 text-sm"
-                        />
-                      </div>
-                      
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowCardForm(null);
-                            setNewCardData({ title: '', description: '', labels: [], due: '' });
-                          }}
-                          className="btn-outline py-1 px-3 text-sm"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => saveCard(list.id)}
-                          className="btn-primary py-1 px-3 text-sm"
-                        >
-                          {editingCardId ? 'Update' : 'Add'} Card
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-                
-                {!showCardForm && list.cards.length === 0 && (
-                  <button
-                    onClick={() => openCardForm(list.id)}
-                    className="w-full py-2 px-3 text-sm text-center rounded-lg text-surface-500 dark:text-surface-400 hover:bg-white dark:hover:bg-surface-900 border border-dashed border-surface-300 dark:border-surface-700 transition-colors"
-                  >
-                    <PlusIcon size={16} className="inline mr-1" />
-                    Add a card
-                  </button>
-                )}
-              </div>
-            </div>
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
           ))}
           
           {/* Add another list button (mobile only) */}
