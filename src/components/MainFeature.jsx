@@ -179,7 +179,13 @@ export default function MainFeature() {
   // Handle drag and drop with react-beautiful-dnd
   const onDragEnd = (result) => {
     const { destination, source, draggableId, type } = result;
-    
+
+    // If result is invalid or missing key properties, return early
+    if (!result || !source) {
+      return;
+    }
+
+    // Check if destination exists
     // If there's no destination or if item was dropped in its original position
     if (!destination || 
         (destination.droppableId === source.droppableId && 
@@ -201,23 +207,41 @@ export default function MainFeature() {
       // If moving within the same list
       if (source.droppableId === destination.droppableId) {
         const listIndex = lists.findIndex(list => list.id === source.droppableId);
+        // If list not found, return early
+        if (listIndex === -1) {
+          return;
+        }
         const newLists = [...lists];
+        if (!newLists[listIndex] || !newLists[listIndex].cards) return;
         const cards = [...newLists[listIndex].cards];
         const [removed] = cards.splice(source.index, 1);
         cards.splice(destination.index, 0, removed);
         newLists[listIndex].cards = cards;
         setLists(newLists);
       } else {
+        
+        // Validate that lists were found
+        if (sourceListIndex === -1 || destListIndex === -1) {
+          return;
+        }
+        
         // Moving between lists
+        if (!newLists[sourceListIndex] || !newLists[sourceListIndex].cards) return;
+        if (!newLists[destListIndex] || !newLists[destListIndex].cards) return;
         const sourceListIndex = lists.findIndex(list => list.id === source.droppableId);
         const destListIndex = lists.findIndex(list => list.id === destination.droppableId);
-        const newLists = [...lists];
+        const card = source.index < newLists[sourceListIndex].cards.length
+          ? newLists[sourceListIndex].cards[source.index]
+          : null;
+        
+        if (!card) return;
         
         // Get the card being moved
-        const card = newLists[sourceListIndex].cards[source.index];
-        
-        // Remove card from source list
-        newLists[sourceListIndex].cards.splice(source.index, 1);
+        if (source.index < newLists[sourceListIndex].cards.length) {
+          newLists[sourceListIndex].cards.splice(source.index, 1);
+          // Add card to destination list at the correct index
+          newLists[destListIndex].cards.splice(destination.index, 0, card);
+        }
         // Add card to destination list at the correct index
         newLists[destListIndex].cards.splice(destination.index, 0, card);
         
