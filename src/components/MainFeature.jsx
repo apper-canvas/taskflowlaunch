@@ -522,7 +522,6 @@ export default function MainFeature() {
           </div>
         </div>
       </div>
-      
       <div className="mt-4 md:mt-6 bg-primary/5 dark:bg-primary/10 rounded-xl p-4 md:p-6">
         <h3 className="text-lg font-medium mb-2">How to use this board:</h3>
         <ul className="list-disc pl-5 space-y-1 text-sm md:text-base text-surface-700 dark:text-surface-300">
