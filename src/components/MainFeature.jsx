@@ -222,7 +222,6 @@ export default function MainFeature() {
         newLists[destListIndex].cards.splice(destination.index, 0, card);
         
         setLists(newLists);
-        toast.info(`Card moved to ${newLists[destListIndex].title}`);
       }
     }
   };
