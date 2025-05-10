@@ -219,26 +219,23 @@ export default function MainFeature() {
         newLists[listIndex].cards = cards;
         setLists(newLists);
       } else {
-        
+        // Moving between different lists
         // Moving between lists
         const newLists = [...lists];
-        const destListIndex = lists.findIndex(list => list.id === destination.droppableId);
-        
         // Validate source and destination lists
+        
+        // Validate source and destination lists exist
         const sourceListIndex = lists.findIndex(list => list.id === source.droppableId);
         if (destListIndex === -1) return;
         if (sourceListIndex === -1) return;
         if (!newLists[destListIndex] || !newLists[destListIndex].cards) return;
+        
         if (!newLists[sourceListIndex] || !newLists[sourceListIndex].cards) return;
         // Get the card being moved and move it to the new list
-        const card = newLists[sourceListIndex].cards[source.index];
         if (card && source.index < newLists[sourceListIndex].cards.length) {
         if (source.index < newLists[sourceListIndex].cards.length) {
           newLists[sourceListIndex].cards.splice(source.index, 1);
-          // Add card to destination list at the correct index
-          
-          setLists(newLists);
-        setLists(newLists);
+          newLists[destListIndex].cards.splice(destination.index, 0, card);
         }
       }
     }
