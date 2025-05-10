@@ -225,22 +225,20 @@ export default function MainFeature() {
         
         // Get the source and destination list indexes
         const sourceListIndex = lists.findIndex(list => list.id === source.droppableId);
+        const destListIndex = lists.findIndex(list => list.id === destination.droppableId);
 
         // Validate source and destination lists
         if (sourceListIndex === -1) return;
-        
-        // Check if the destination list and its cards exist
         if (destListIndex === -1) return;
-        // Get the card being moved and move it to the new list
         if (!newLists[destListIndex] || !newLists[destListIndex].cards) return;
         
         // Get the card being moved
-        const card = newLists[sourceListIndex].cards[source.index];
-        newLists[sourceListIndex].cards.splice(source.index, 1);
-        newLists[destListIndex].cards.splice(destination.index, 0, card);
-        setLists(newLists);
-      }
-    }
+        if (sourceListIndex < newLists.length && source.index < newLists[sourceListIndex].cards.length) {
+          const card = newLists[sourceListIndex].cards[source.index];
+          newLists[sourceListIndex].cards.splice(source.index, 1);
+          newLists[destListIndex].cards.splice(destination.index, 0, card);
+          setLists(newLists);
+        }
       }
     }
   };
