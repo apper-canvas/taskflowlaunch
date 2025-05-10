@@ -241,7 +241,6 @@ export default function MainFeature() {
           newLists[sourceListIndex].cards.splice(source.index, 1);
           // Add card to destination list at the correct index
           newLists[destListIndex].cards.splice(destination.index, 0, card);
-        newLists[destListIndex].cards.splice(destination.index, 0, card);
         
         setLists(newLists);
       }
